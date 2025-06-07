@@ -111,7 +111,6 @@
 /* Print specific styles */
 @media print {
   /* Hide elements specifically marked as non-printable */
-  /* This includes .non-printable-section on divs, buttons, card headers/footers, etc. */
   .non-printable-section, .non-printable {
     display: none !important;
   }
@@ -121,52 +120,94 @@
     display: none !important;
   }
 
-  /* Ensure the body itself doesn't have weird print margins from screen styles */
+  /* Basic body reset for print */
   body {
+    background-color: white !important;
+    color: black !important;
     margin: 0 !important;
     padding: 0 !important;
-    background-color: white !important; /* Force white background for the whole page */
+    width: auto !important;
+    height: auto !important;
+    font-size: 11pt !important; /* Adjusted for better print readability */
+    line-height: 1.4 !important;
+  }
+  html {
+    background-color: white !important;
   }
 
-  /* Style the printable profile to take over the page */
+  /* Ensure the grid container of the form and preview effectively collapses for print */
+  .md\:grid-cols-2 { /* This is the class on CardContent */
+    display: block !important; /* Stack elements, .non-printable-section will be display:none */
+  }
+
+  /* The div that WRAPS the ProfilePreview component */
   .printable-profile {
-    display: block !important; /* Ensure it's a block and visible */
-    visibility: visible !important; /* Explicitly visible */
-    position: fixed !important; /* Use fixed to take over the viewport for printing */
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important; /* Use viewport units for full coverage */
-    height: 100vh !important; /* Full height, content might overflow to next page */
-    padding: 20px !important; /* Add some padding for print margins */
+    display: block !important; /* Make sure it's displayed */
+    visibility: visible !important;
+    position: static !important; /* CRITICAL: Keep it in flow, don't use fixed/absolute. */
+    width: 100% !important; /* Occupy available width */
+    margin: 0 auto !important; 
+    padding: 0.5in !important; /* Standard page margin */
     box-sizing: border-box !important;
-    background-color: white !important; /* Ensure its own background is white */
-    overflow: auto !important; /* Allow scrolling if content exceeds one page height, for multi-page print */
-    z-index: 9999 !important; /* Ensure it's on top */
+    background-color: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-before: always !important; /* Start on a new page */
   }
   
-  /* Reset potentially problematic styles within the printable area */
+  /* If ProfilePreview itself is a Card, style that card for printing */
+  .printable-profile > .border { /* Targets the Card inside ProfilePreview */
+    border: 1px solid #ccc !important; 
+    box-shadow: none !important;
+    background-color: white !important;
+  }
+  .printable-profile .rounded-full { /* Ensure profile image border is visible */
+    border-width: 2px !important;
+    border-color: #ccc !important;
+  }
+
+
+  /* Reset styles for elements within the preview to be print-friendly */
   .printable-profile * {
-    visibility: visible !important; /* Make sure all children are visible */
+    visibility: visible !important; 
+    background-color: transparent !important; 
+    color: black !important; 
     box-shadow: none !important;
     text-shadow: none !important;
     -webkit-print-color-adjust: exact !important; 
     print-color-adjust: exact !important;
   }
 
-  /* Override sticky positioning for print within the printable profile */
-  .printable-profile .md\:sticky { /* Class for sticky preview on desktop */
-     position: static !important;
-  }
-  
-  /* Simplify card appearance for print if needed */
-  .printable-profile .border { 
-      border-color: #ccc !important; 
-  }
-  .printable-profile .bg-card {
-      background-color: white !important;
-  }
   .printable-profile img {
     max-width: 100% !important;
     page-break-inside: avoid !important;
+  }
+  
+  .printable-profile .text-primary,
+  .printable-profile .text-accent,
+  .printable-profile .text-primary-foreground, /* Ensure these are black */
+  .printable-profile .text-accent-foreground,
+  .printable-profile .text-secondary-foreground {
+    color: black !important; 
+  }
+
+  .printable-profile .text-muted-foreground {
+    color: #333 !important; 
+  }
+
+  /* Style badges for print */
+  .printable-profile .bg-accent, 
+  .printable-profile .bg-secondary,
+  .printable-profile .bg-primary {
+    background-color: transparent !important;
+    color: black !important;
+    border: 1px solid #aaa !important; 
+    padding: 1px 5px !important;
+    border-radius: 0.25rem !important; /* Slight rounding for badges */
+  }
+  
+  /* Hide the sticky behavior for print */
+  .printable-profile .md\:sticky {
+    position: static !important;
   }
 }
