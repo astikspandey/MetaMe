@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -104,5 +105,30 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Print specific styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-profile, .printable-profile * {
+    visibility: visible;
+  }
+  .printable-profile {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  /* Hide non-essential elements for print more explicitly */
+  header, footer, button.non-printable-section, div.non-printable-section, .non-printable {
+    display: none !important;
+  }
+  /* Ensure buttons inside the printable profile (if any, though unlikely) are not hidden by the generic button rule */
+  .printable-profile button {
+    display: inline-flex !important; /* Or whatever their usual display is */
+    visibility: visible !important;
   }
 }

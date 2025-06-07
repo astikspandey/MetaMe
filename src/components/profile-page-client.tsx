@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -99,7 +100,7 @@ export function ProfilePageClient() {
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl">
+      <Card className="shadow-xl non-printable-section">
         <CardHeader>
           <CardTitle className="font-headline text-2xl flex items-center">
             <Sparkles className="mr-2 h-7 w-7 text-accent" />
@@ -132,7 +133,7 @@ export function ProfilePageClient() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleGenerateProfile} disabled={isLoading} size="lg">
+          <Button onClick={handleGenerateProfile} disabled={isLoading} size="lg" className="non-printable-section">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -148,7 +149,7 @@ export function ProfilePageClient() {
         </CardFooter>
       </Card>
 
-      <Card className="shadow-xl">
+      <Card className="shadow-xl non-printable-section">
         <CardHeader>
           <CardTitle className="font-headline text-2xl flex items-center">
             <Edit3 className="mr-2 h-7 w-7 text-accent" />
@@ -208,7 +209,7 @@ export function ProfilePageClient() {
             </div>
           </div>
 
-          <div className="md:sticky md:top-8 md:self-start"> {/* Sticky preview on desktop */}
+          <div className="md:sticky md:top-8 md:self-start printable-profile"> {/* Sticky preview on desktop, and targeted for printing */}
             <ProfilePreview
               name={name}
               headline={headline}
@@ -220,43 +221,12 @@ export function ProfilePageClient() {
           </div>
         </CardContent>
         <CardFooter>
-            <Button onClick={handleDownloadPdf} variant="outline" size="lg">
+            <Button onClick={handleDownloadPdf} variant="outline" size="lg" className="non-printable-section">
                 <Download className="mr-2 h-5 w-5" />
                 Download as PDF (Print)
             </Button>
         </CardFooter>
       </Card>
-      
-      {/* Styles for printing the preview only */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .printable-profile, .printable-profile * {
-            visibility: visible;
-          }
-          .printable-profile {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          /* Hide non-essential elements for print */
-          header, footer, button, .non-printable {
-            display: none !important;
-          }
-        }
-      `}</style>
-      <div className="printable-profile md:hidden"> {/* Hidden on screen, shown for print if needed, but ProfilePreview will be styled */}
-         {/* This div is mainly a trick for @media print css if we want to isolate content. 
-             However, window.print() will print the current view.
-             The Card structure around ProfilePreview should be hidden by the @media print styles.
-             The current ProfilePreview is within CardContent, so it might not be ideal.
-             For a simple print, we just apply print styles to hide everything else.
-             The ProfilePreview Card itself will be printed.
-         */}
-      </div>
     </div>
   );
 }
