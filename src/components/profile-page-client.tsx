@@ -30,7 +30,6 @@ export function ProfilePageClient() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Cleanup Object URL if used. Using Data URL now, so not strictly needed but good practice if switching.
     return () => {
       if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(imagePreviewUrl);
@@ -89,8 +88,6 @@ export function ProfilePageClient() {
   };
   
   const handleDownloadPdf = () => {
-    // This is a simple browser print functionality.
-    // For a true PDF export, a library like jsPDF or a server-side solution would be needed.
     toast({
       title: "Preparing Download",
       description: "Your browser's print dialog will open. Choose 'Save as PDF'.",
@@ -149,8 +146,8 @@ export function ProfilePageClient() {
         </CardFooter>
       </Card>
 
-      <Card className="shadow-xl non-printable-section">
-        <CardHeader>
+      <Card className="shadow-xl"> {/* Removed non-printable-section from this Card */}
+        <CardHeader className="non-printable-section"> {/* Added non-printable-section */}
           <CardTitle className="font-headline text-2xl flex items-center">
             <Edit3 className="mr-2 h-7 w-7 text-accent" />
             Craft Your MetaMe
@@ -160,7 +157,7 @@ export function ProfilePageClient() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-8">
-          <div className="space-y-6">
+          <div className="space-y-6 non-printable-section"> {/* Added non-printable-section to form inputs container */}
             <div>
               <Label htmlFor="profile-image" className="text-lg font-medium block mb-1">Profile Photo</Label>
               <div className="flex items-center gap-4">
@@ -209,7 +206,7 @@ export function ProfilePageClient() {
             </div>
           </div>
 
-          <div className="md:sticky md:top-8 md:self-start printable-profile"> {/* Sticky preview on desktop, and targeted for printing */}
+          <div className="md:sticky md:top-8 md:self-start printable-profile">
             <ProfilePreview
               name={name}
               headline={headline}
@@ -220,8 +217,8 @@ export function ProfilePageClient() {
             />
           </div>
         </CardContent>
-        <CardFooter>
-            <Button onClick={handleDownloadPdf} variant="outline" size="lg" className="non-printable-section">
+        <CardFooter className="non-printable-section"> {/* Added non-printable-section */}
+            <Button onClick={handleDownloadPdf} variant="outline" size="lg" className="non-printable-section"> {/* This button already had non-printable-section which is correct */}
                 <Download className="mr-2 h-5 w-5" />
                 Download as PDF (Print)
             </Button>
