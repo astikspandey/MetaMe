@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ProfilePreview } from '@/components/profile-preview';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Sparkles, Edit3, ImageUp, Download, Info, Loader2, UserCircle2, Link as LinkIcon } from 'lucide-react';
+import { Sparkles, Edit3, UserCircle2, Link as LinkIcon, Download, Info, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 export function ProfilePageClient() {
@@ -96,17 +96,23 @@ export function ProfilePageClient() {
   };
 
   const handleCopyPdfLink = async () => {
-    const profilePdfUrl = `${window.location.origin}/profile.pdf?name=${encodeURIComponent(name || 'shared')}&ts=${Date.now()}`;
+    const params = new URLSearchParams();
+    if (name) params.append('name', name);
+    if (headline) params.append('headline', headline);
+    if (profileContent) params.append('content', profileContent);
+    if (interests) params.append('interests', interests);
+    if (skills) params.append('skills', skills);
+    // imagePreviewUrl is a data URI, too long for a GET request query param.
+    // For a real implementation, image would be uploaded and referenced by a URL,
+    // or PDF generation would happen server-side with access to the image data.
+
+    const profilePdfUrl = `${window.location.origin}/profile.pdf?${params.toString()}&ts=${Date.now()}`;
+    
     try {
       await navigator.clipboard.writeText(profilePdfUrl);
       toast({
         title: "Profile PDF Link Copied!",
-        description: (
-          <>
-            <p>Placeholder link copied: {profilePdfUrl}</p>
-            <p className="text-xs mt-1">Note: PDF generation/hosting backend is not yet implemented.</p>
-          </>
-        ),
+        description: `A shareable link to a PDF version of your profile has been copied: ${profilePdfUrl}`,
       });
     } catch (err) {
       console.error('Failed to copy PDF link: ', err);
@@ -169,7 +175,7 @@ export function ProfilePageClient() {
         </CardFooter>
       </Card>
 
-      <Card className="shadow-xl">
+      <Card className="shadow-xl"> 
         <CardHeader className="non-printable-section">
           <CardTitle className="font-headline text-2xl flex items-center">
             <Edit3 className="mr-2 h-7 w-7 text-accent" />
@@ -240,12 +246,12 @@ export function ProfilePageClient() {
             />
           </div>
         </CardContent>
-        <CardFooter className="non-printable-section flex space-x-2">
-            <Button onClick={handleDownloadPdf} variant="outline" size="lg" className="non-printable-section">
+        <CardFooter className="non-printable-section flex flex-wrap gap-2">
+            <Button onClick={handleDownloadPdf} variant="outline" size="lg">
                 <Download className="mr-2 h-5 w-5" />
                 Download as PDF (Print)
             </Button>
-            <Button onClick={handleCopyPdfLink} variant="outline" size="lg" className="non-printable-section">
+            <Button onClick={handleCopyPdfLink} variant="outline" size="lg">
                 <LinkIcon className="mr-2 h-5 w-5" />
                 Copy PDF Link
             </Button>
@@ -254,5 +260,3 @@ export function ProfilePageClient() {
     </div>
   );
 }
-
-    
