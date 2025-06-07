@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ProfilePreview } from '@/components/profile-preview';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Sparkles, Edit3, ImageUp, Download, Info, Loader2, UserCircle2 } from 'lucide-react';
+import { Sparkles, Edit3, ImageUp, Download, Info, Loader2, UserCircle2, Link as LinkIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 export function ProfilePageClient() {
@@ -95,6 +95,29 @@ export function ProfilePageClient() {
     window.print();
   };
 
+  const handleCopyPdfLink = async () => {
+    const profilePdfUrl = `${window.location.origin}/profile.pdf?name=${encodeURIComponent(name || 'shared')}&ts=${Date.now()}`;
+    try {
+      await navigator.clipboard.writeText(profilePdfUrl);
+      toast({
+        title: "Profile PDF Link Copied!",
+        description: (
+          <>
+            <p>Placeholder link copied: {profilePdfUrl}</p>
+            <p className="text-xs mt-1">Note: PDF generation/hosting backend is not yet implemented.</p>
+          </>
+        ),
+      });
+    } catch (err) {
+      console.error('Failed to copy PDF link: ', err);
+      toast({
+        variant: "destructive",
+        title: "Failed to Copy Link",
+        description: "Could not copy the link to your clipboard.",
+      });
+    }
+  };
+
   return (
     <div className="space-y-8">
       <Card className="shadow-xl non-printable-section">
@@ -146,8 +169,8 @@ export function ProfilePageClient() {
         </CardFooter>
       </Card>
 
-      <Card className="shadow-xl"> {/* Removed non-printable-section from this Card */}
-        <CardHeader className="non-printable-section"> {/* Added non-printable-section */}
+      <Card className="shadow-xl">
+        <CardHeader className="non-printable-section">
           <CardTitle className="font-headline text-2xl flex items-center">
             <Edit3 className="mr-2 h-7 w-7 text-accent" />
             Craft Your MetaMe
@@ -157,7 +180,7 @@ export function ProfilePageClient() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-8">
-          <div className="space-y-6 non-printable-section"> {/* Added non-printable-section to form inputs container */}
+          <div className="space-y-6 non-printable-section">
             <div>
               <Label htmlFor="profile-image" className="text-lg font-medium block mb-1">Profile Photo</Label>
               <div className="flex items-center gap-4">
@@ -217,13 +240,19 @@ export function ProfilePageClient() {
             />
           </div>
         </CardContent>
-        <CardFooter className="non-printable-section"> {/* Added non-printable-section */}
-            <Button onClick={handleDownloadPdf} variant="outline" size="lg" className="non-printable-section"> {/* This button already had non-printable-section which is correct */}
+        <CardFooter className="non-printable-section flex space-x-2">
+            <Button onClick={handleDownloadPdf} variant="outline" size="lg" className="non-printable-section">
                 <Download className="mr-2 h-5 w-5" />
                 Download as PDF (Print)
+            </Button>
+            <Button onClick={handleCopyPdfLink} variant="outline" size="lg" className="non-printable-section">
+                <LinkIcon className="mr-2 h-5 w-5" />
+                Copy PDF Link
             </Button>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
+    
