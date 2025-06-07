@@ -110,25 +110,63 @@
 
 /* Print specific styles */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .printable-profile, .printable-profile * {
-    visibility: visible;
-  }
-  .printable-profile {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-  /* Hide non-essential elements for print more explicitly */
-  header, footer, button.non-printable-section, div.non-printable-section, .non-printable {
+  /* Hide elements specifically marked as non-printable */
+  /* This includes .non-printable-section on divs, buttons, card headers/footers, etc. */
+  .non-printable-section, .non-printable {
     display: none !important;
   }
-  /* Ensure buttons inside the printable profile (if any, though unlikely) are not hidden by the generic button rule */
-  .printable-profile button {
-    display: inline-flex !important; /* Or whatever their usual display is */
-    visibility: visible !important;
+  
+  /* Hide common page elements not needed for profile print */
+  header, footer, nav, aside { /* HTML tags */
+    display: none !important;
+  }
+
+  /* Ensure the body itself doesn't have weird print margins from screen styles */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: white !important; /* Force white background for the whole page */
+  }
+
+  /* Style the printable profile to take over the page */
+  .printable-profile {
+    display: block !important; /* Ensure it's a block and visible */
+    visibility: visible !important; /* Explicitly visible */
+    position: fixed !important; /* Use fixed to take over the viewport for printing */
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important; /* Use viewport units for full coverage */
+    height: 100vh !important; /* Full height, content might overflow to next page */
+    padding: 20px !important; /* Add some padding for print margins */
+    box-sizing: border-box !important;
+    background-color: white !important; /* Ensure its own background is white */
+    overflow: auto !important; /* Allow scrolling if content exceeds one page height, for multi-page print */
+    z-index: 9999 !important; /* Ensure it's on top */
+  }
+  
+  /* Reset potentially problematic styles within the printable area */
+  .printable-profile * {
+    visibility: visible !important; /* Make sure all children are visible */
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-print-color-adjust: exact !important; 
+    print-color-adjust: exact !important;
+  }
+
+  /* Override sticky positioning for print within the printable profile */
+  .printable-profile .md\:sticky { /* Class for sticky preview on desktop */
+     position: static !important;
+  }
+  
+  /* Simplify card appearance for print if needed */
+  .printable-profile .border { 
+      border-color: #ccc !important; 
+  }
+  .printable-profile .bg-card {
+      background-color: white !important;
+  }
+  .printable-profile img {
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
   }
 }
