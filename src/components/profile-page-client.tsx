@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { generateProfile } from '@/ai/flows/generate-profile';
 import { Button } from '@/components/ui/button';
@@ -23,16 +23,20 @@ export function ProfilePageClient() {
   const [skills, setSkills] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [hostedImageUrl, setHostedImageUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const currentPreviewUrl = imagePreviewUrl;
     return () => {
-      if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(imagePreviewUrl);
+      if (currentPreviewUrl && currentPreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(currentPreviewUrl);
       }
     };
   }, [imagePreviewUrl]);
@@ -64,26 +68,90 @@ export function ProfilePageClient() {
     }
   };
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         setErrorMessage("Image size should not exceed 5MB.");
         setImageFile(null);
         setImagePreviewUrl(null);
-        event.target.value = ''; // Reset file input
+        setHostedImageUrl(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ''; 
+        }
         return;
       }
       setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
       setErrorMessage(null);
+
+      // Create local preview URL
+      if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+      const localPreview = URL.createObjectURL(file);
+      setImagePreviewUrl(localPreview);
+      
+      // Upload to ImgBB
+      setIsUploadingImage(true);
+      setHostedImageUrl(null); // Reset previous hosted URL
+
+      const apiKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+      if (!apiKey) {
+        console.error("ImgBB API key is not configured.");
+        toast({
+          variant: "destructive",
+          title: "Image Upload Configuration Error",
+          description: "ImgBB API key is missing. Please add NEXT_PUBLIC_IMGBB_API_KEY to your .env.local file.",
+        });
+        setIsUploadingImage(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      try {
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData?.error?.message || `ImgBB API error: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        if (result.data && result.data.url) {
+          setHostedImageUrl(result.data.url);
+          // No need to set imagePreviewUrl here again, local one is faster for immediate preview
+          toast({
+            title: "Image Uploaded!",
+            description: "Your image has been successfully hosted and will be included in the PDF link.",
+          });
+        } else {
+          throw new Error("ImgBB API did not return a valid image URL.");
+        }
+      } catch (error: any) {
+        console.error("Error uploading image to ImgBB:", error);
+        setErrorMessage(`Failed to upload image: ${error.message}`);
+        toast({
+          variant: "destructive",
+          title: "Image Upload Failed",
+          description: error.message || "Could not upload image to ImgBB.",
+        });
+        setHostedImageUrl(null); // Clear hosted URL on failure
+      } finally {
+        setIsUploadingImage(false);
+      }
+
     } else {
       setImageFile(null);
+      if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
       setImagePreviewUrl(null);
+      setHostedImageUrl(null);
     }
   };
   
@@ -102,17 +170,24 @@ export function ProfilePageClient() {
     if (profileContent) params.append('content', profileContent);
     if (interests) params.append('interests', interests);
     if (skills) params.append('skills', skills);
-    // imagePreviewUrl is a data URI, too long for a GET request query param.
-    // For a real implementation, image would be uploaded and referenced by a URL,
-    // or PDF generation would happen server-side with access to the image data.
+    
+    if (hostedImageUrl) {
+      params.append('imageUrl', hostedImageUrl);
+    } else if (imagePreviewUrl && (imagePreviewUrl.startsWith('http://') || imagePreviewUrl.startsWith('https://'))) {
+      // Fallback for placeholder images (e.g. placehold.co) if no user image is uploaded/hosted
+      params.append('imageUrl', imagePreviewUrl);
+    }
+    // Add a timestamp to ensure the link is unique and bypasses potential caching if parameters are the same
+    params.append('ts', Date.now().toString());
 
-    const profilePdfUrl = `${window.location.origin}/profile.pdf?${params.toString()}&ts=${Date.now()}`;
+
+    const profilePdfUrl = `${window.location.origin}/profile.pdf?${params.toString()}`;
     
     try {
       await navigator.clipboard.writeText(profilePdfUrl);
       toast({
         title: "Profile PDF Link Copied!",
-        description: `A shareable link to a PDF version of your profile has been copied: ${profilePdfUrl}`,
+        description: `A shareable link to a PDF version of your profile has been copied.`,
       });
     } catch (err) {
       console.error('Failed to copy PDF link: ', err);
@@ -159,7 +234,7 @@ export function ProfilePageClient() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleGenerateProfile} disabled={isLoading} size="lg" className="non-printable-section">
+          <Button onClick={handleGenerateProfile} disabled={isLoading || isUploadingImage} size="lg" className="non-printable-section">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -197,9 +272,10 @@ export function ProfilePageClient() {
                     <UserCircle2 className="w-12 h-12 text-muted-foreground" />
                   </div>
                 )}
-                <Input id="profile-image" type="file" accept="image/png, image/jpeg, image/gif" onChange={handleImageChange} className="max-w-xs" />
+                <Input ref={fileInputRef} id="profile-image" type="file" accept="image/png, image/jpeg, image/gif" onChange={handleImageChange} className="max-w-xs" disabled={isUploadingImage} />
+                {isUploadingImage && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 5MB.</p>
+              <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 5MB. Uploaded to ImgBB for PDF link.</p>
             </div>
 
             <div>
@@ -242,16 +318,16 @@ export function ProfilePageClient() {
               content={profileContent}
               interests={interests}
               skills={skills}
-              imageUrl={imagePreviewUrl}
+              imageUrl={imagePreviewUrl} 
             />
           </div>
         </CardContent>
         <CardFooter className="non-printable-section flex flex-wrap gap-2">
-            <Button onClick={handleDownloadPdf} variant="outline" size="lg">
+            <Button onClick={handleDownloadPdf} variant="outline" size="lg" disabled={isUploadingImage}>
                 <Download className="mr-2 h-5 w-5" />
                 Download as PDF (Print)
             </Button>
-            <Button onClick={handleCopyPdfLink} variant="outline" size="lg">
+            <Button onClick={handleCopyPdfLink} variant="outline" size="lg" disabled={isUploadingImage}>
                 <LinkIcon className="mr-2 h-5 w-5" />
                 Copy PDF Link
             </Button>
