@@ -13,6 +13,7 @@ import { ProfilePreview } from '@/components/profile-preview';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Sparkles, Edit3, UserCircle2, Link as LinkIcon, Download, Info, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/lib/logger";
 
 export function ProfilePageClient() {
   const [prompt, setPrompt] = useState<string>('');
@@ -52,12 +53,13 @@ export function ProfilePageClient() {
     try {
       const result = await generateProfile({ prompt });
       setProfileContent(result.profile);
+      logger.info("AI profile generated", { promptLength: prompt.length, profileLength: result.profile.length });
       toast({
         title: "AI Profile Generated!",
         description: "Your AI-generated profile content is ready for customization.",
       });
     } catch (error) {
-      console.error("Error generating profile:", error);
+      logger.error("AI profile generation failed", error, { promptLength: prompt.length });
       setErrorMessage("Failed to generate profile. Please try again or refine your prompt.");
       toast({
         variant: "destructive",
@@ -96,7 +98,7 @@ export function ProfilePageClient() {
 
       const apiKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
       if (!apiKey) {
-        console.error("ImgBB API key is not configured.");
+        logger.error("ImgBB upload skipped: NEXT_PUBLIC_IMGBB_API_KEY is not set", null, { fileName: file.name });
         toast({
           variant: "destructive",
           title: "Image Upload Configuration Error",
@@ -123,6 +125,7 @@ export function ProfilePageClient() {
         const result = await response.json();
         if (result.data && result.data.url) {
           setHostedImageUrl(result.data.url);
+          logger.info("ImgBB upload succeeded", { fileName: file.name, hostedUrl: result.data.url });
           toast({
             title: "Image Uploaded!",
             description: "Your image has been successfully hosted and will be included in the PDF link.",
@@ -131,7 +134,7 @@ export function ProfilePageClient() {
           throw new Error("ImgBB API did not return a valid image URL.");
         }
       } catch (error: any) {
-        console.error("Error uploading image to ImgBB:", error);
+        logger.error("ImgBB upload failed", error, { fileName: file.name, fileSize: file.size });
         setErrorMessage(`Failed to upload image: ${error.message}`);
         toast({
           variant: "destructive",
@@ -188,7 +191,7 @@ export function ProfilePageClient() {
         description: "A shareable link to your MetaMe profile has been copied.",
       });
     } catch (err: any) {
-      console.error('Failed to copy profile link: ', err);
+      logger.error("Failed to copy profile link", err);
       toast({
         variant: "destructive",
         title: "Failed to Copy Link",
