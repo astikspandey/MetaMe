@@ -163,89 +163,37 @@ export function ProfilePageClient() {
 
   const handleCopyPdfLink = async () => {
     setIsShorteningLink(true);
-    const params = new URLSearchParams();
-    if (name) params.append('name', name);
-    if (headline) params.append('headline', headline);
-    if (profileContent) params.append('content', profileContent);
-    if (interests) params.append('interests', interests);
-    if (skills) params.append('skills', skills);
-    
-    if (hostedImageUrl) {
-      params.append('imageUrl', hostedImageUrl);
-    } else if (imagePreviewUrl && (imagePreviewUrl.startsWith('http://') || imagePreviewUrl.startsWith('https://'))) {
-      params.append('imageUrl', imagePreviewUrl);
-    }
-    params.append('ts', Date.now().toString());
-
-    const longProfilePdfUrl = `${window.location.origin}/profile.pdf?${params.toString()}`;
-    
-    // IMPORTANT: For production, move this token to .env.local as NEXT_PUBLIC_BITLY_ACCESS_TOKEN
-    // and ideally proxy Bitly calls through your own backend to protect the token.
-    const bitlyAccessToken = process.env.NEXT_PUBLIC_BITLY_ACCESS_TOKEN || "abd1a0d0d4143197e830df9ace321cc9f1c6ebb9";
-
-
-    if (!bitlyAccessToken) {
-      console.error('Bitly Access Token is not configured.');
-      try {
-        await navigator.clipboard.writeText(longProfilePdfUrl);
-        toast({
-          title: "Profile PDF Link Copied (Long URL)",
-          description: "Bitly token not found. The full link has been copied.",
-        });
-      } catch (err) {
-        console.error('Failed to copy long PDF link: ', err);
-        toast({
-          variant: "destructive",
-          title: "Failed to Copy Link",
-          description: "Could not copy the link to your clipboard.",
-        });
-      }
-      setIsShorteningLink(false);
-      return;
-    }
-
     try {
-      const response = await fetch('https://api-ssl.bitly.com/v4/shorten', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${bitlyAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ long_url: longProfilePdfUrl }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.description || `Bitly API error: ${response.statusText}`);
+      const doc: Record<string, string> = {};
+      if (name) doc.name = name;
+      if (headline) doc.headline = headline;
+      if (profileContent) doc.content = profileContent;
+      if (interests) doc.interests = interests;
+      if (skills) doc.skills = skills;
+      if (hostedImageUrl) {
+        doc.imageUrl = hostedImageUrl;
+      } else if (imagePreviewUrl && (imagePreviewUrl.startsWith('http://') || imagePreviewUrl.startsWith('https://'))) {
+        doc.imageUrl = imagePreviewUrl;
       }
 
-      const result = await response.json();
-      const shortUrl = result.link;
+      const bytes = new TextEncoder().encode(JSON.stringify(doc));
+      let binary = '';
+      bytes.forEach((b) => { binary += String.fromCharCode(b); });
+      const encoded = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-      await navigator.clipboard.writeText(shortUrl);
+      const shareUrl = `${window.location.origin}/?doc=${encoded}`;
+      await navigator.clipboard.writeText(shareUrl);
       toast({
-        title: "Shortened PDF Link Copied!",
-        description: `A short, shareable link to a PDF of your profile has been copied.`,
+        title: "Profile Link Copied!",
+        description: "A shareable link to your MetaMe profile has been copied.",
       });
-
     } catch (err: any) {
-      console.error('Failed to shorten or copy PDF link: ', err);
-      // Fallback to copying the long URL
-      try {
-        await navigator.clipboard.writeText(longProfilePdfUrl);
-        toast({
-          variant: "destructive",
-          title: "PDF Link Copied (Long URL)",
-          description: `Could not shorten link: ${err.message}. The full link has been copied.`,
-        });
-      } catch (copyErr) {
-        console.error('Failed to copy long PDF link after Bitly failure: ', copyErr);
-        toast({
-          variant: "destructive",
-          title: "Failed to Copy Link",
-          description: "Could not shorten or copy the link to your clipboard.",
-        });
-      }
+      console.error('Failed to copy profile link: ', err);
+      toast({
+        variant: "destructive",
+        title: "Failed to Copy Link",
+        description: "Could not copy the link to your clipboard.",
+      });
     } finally {
       setIsShorteningLink(false);
     }
@@ -383,12 +331,12 @@ export function ProfilePageClient() {
               {isShorteningLink ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Shortening...
+                  Copying...
                 </>
               ) : (
                 <>
                   <LinkIcon className="mr-2 h-5 w-5" />
-                  Copy PDF Link
+                  Copy Profile Link
                 </>
               )}
             </Button>

@@ -8,8 +8,8 @@
  * - GenerateProfileOutput - The return type for the generateProfile function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { z } from 'zod';
+import { chatComplete } from '@/ai/client';
 
 const GenerateProfileInputSchema = z.object({
   prompt: z.string().describe('A prompt describing the desired profile.'),
@@ -22,24 +22,16 @@ const GenerateProfileOutputSchema = z.object({
 export type GenerateProfileOutput = z.infer<typeof GenerateProfileOutputSchema>;
 
 export async function generateProfile(input: GenerateProfileInput): Promise<GenerateProfileOutput> {
-  return generateProfileFlow(input);
+  const { prompt } = GenerateProfileInputSchema.parse(input);
+
+  const profile = await chatComplete([
+    {
+      role: 'system',
+      content:
+        'You are a profile creation expert. Create a profile based on the user prompt. Respond with only the profile content, no preamble or commentary.',
+    },
+    { role: 'user', content: prompt },
+  ]);
+
+  return GenerateProfileOutputSchema.parse({ profile: profile.trim() });
 }
-
-const prompt = ai.definePrompt({
-  name: 'generateProfilePrompt',
-  input: {schema: GenerateProfileInputSchema},
-  output: {schema: GenerateProfileOutputSchema},
-  prompt: `You are a profile creation expert.  Create a profile based on the following prompt:\n\n{{prompt}}`,
-});
-
-const generateProfileFlow = ai.defineFlow(
-  {
-    name: 'generateProfileFlow',
-    inputSchema: GenerateProfileInputSchema,
-    outputSchema: GenerateProfileOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);

@@ -8,8 +8,8 @@
  * - SummarizeProfileOutput - The return type for the summarizeProfile function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { z } from 'zod';
+import { chatComplete } from '@/ai/client';
 
 const SummarizeProfileInputSchema = z.object({
   profile: z.string().describe('The full profile text to summarize.'),
@@ -25,28 +25,19 @@ const SummarizeProfileOutputSchema = z.object({
 export type SummarizeProfileOutput = z.infer<typeof SummarizeProfileOutputSchema>;
 
 export async function summarizeProfile(input: SummarizeProfileInput): Promise<SummarizeProfileOutput> {
-  return summarizeProfileFlow(input);
+  const { profile, length } = SummarizeProfileInputSchema.parse(input);
+
+  const summary = await chatComplete([
+    {
+      role: 'system',
+      content:
+        'You are an expert at summarizing profiles for use on professional networking websites. Respond with only the summary, no preamble or commentary.',
+    },
+    {
+      role: 'user',
+      content: `Please provide a summary of the following profile, tailored to be ${length}:\n\nProfile: ${profile}`,
+    },
+  ]);
+
+  return SummarizeProfileOutputSchema.parse({ summary: summary.trim() });
 }
-
-const prompt = ai.definePrompt({
-  name: 'summarizeProfilePrompt',
-  input: {schema: SummarizeProfileInputSchema},
-  output: {schema: SummarizeProfileOutputSchema},
-  prompt: `You are an expert at summarizing profiles for use on professional networking websites.
-
-  Please provide a summary of the following profile, tailored to be {{length}}:
-
-  Profile: {{{profile}}} `,
-});
-
-const summarizeProfileFlow = ai.defineFlow(
-  {
-    name: 'summarizeProfileFlow',
-    inputSchema: SummarizeProfileInputSchema,
-    outputSchema: SummarizeProfileOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);
