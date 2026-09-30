@@ -1,6 +1,7 @@
 "use client";
 
 import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserCircle2, Briefcase, Zap, Lightbulb } from 'lucide-react';
 
@@ -45,7 +46,9 @@ export function ProfilePreview({ name, headline, content, interests, skills, ima
         {content && (
           <div>
             <h3 className="text-lg font-headline font-medium mb-2 text-primary">About Me</h3>
-            <p className="text-sm whitespace-pre-line">{content}</p>
+            <div className="text-sm prose prose-sm max-w-none prose-p:my-2 prose-headings:font-headline prose-headings:text-primary">
+              <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
           </div>
         )}
 

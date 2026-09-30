@@ -52,11 +52,15 @@ export function ProfilePageClient() {
     setErrorMessage(null);
     try {
       const result = await generateProfile({ prompt });
-      setProfileContent(result.profile);
-      logger.info("AI profile generated", { promptLength: prompt.length, profileLength: result.profile.length });
+      setName(result.name);
+      setHeadline(result.headline);
+      setProfileContent(result.content);
+      setInterests(result.interests);
+      setSkills(result.skills);
+      logger.info("AI profile generated", { promptLength: prompt.length, profileLength: result.content.length });
       toast({
         title: "AI Profile Generated!",
-        description: "Your AI-generated profile content is ready for customization.",
+        description: "Your AI-generated profile is ready for customization.",
       });
     } catch (error) {
       logger.error("AI profile generation failed", error, { promptLength: prompt.length });
