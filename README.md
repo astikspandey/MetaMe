@@ -1,3 +1,3 @@
 # MetaMe
 
-An AI powered resume builder
+An AI powered profile builder
