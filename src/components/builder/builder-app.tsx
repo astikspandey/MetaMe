@@ -14,6 +14,7 @@ import { generatePageHtml } from '@/ai/flows/generate-page-html';
 import { generateHtmlPage } from '@/ai/flows/generate-html-page';
 import type { Block, CanvasDoc } from '@/lib/builder-types';
 import { CANVAS_ASPECT_RATIO } from '@/lib/builder-types';
+import { importHtmlToBlocks } from '@/lib/import-html-to-blocks';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { Type, ImagePlus, Download, LinkIcon, Loader2, Sparkles, Pencil } from 'lucide-react';
@@ -41,9 +42,9 @@ export function BuilderApp() {
   // --- AI generate mode ---
   const [aiPrompt, setAiPrompt] = useState('');
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
-  const [generatedCanvas, setGeneratedCanvas] = useState<CanvasDoc | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSharingAi, setIsSharingAi] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const handleGenerateHtml = async () => {
     if (!aiPrompt.trim()) {
@@ -52,9 +53,8 @@ export function BuilderApp() {
     }
     setIsGenerating(true);
     try {
-      const { html, canvas } = await generateHtmlPage({ prompt: aiPrompt });
+      const { html } = await generateHtmlPage({ prompt: aiPrompt });
       setGeneratedHtml(html);
-      setGeneratedCanvas({ kind: 'canvas', ...canvas });
       logger.info('AI page generated', { promptLength: aiPrompt.length, htmlLength: html.length });
       toast({ title: 'Page generated!', description: 'Download it or copy a free share link below.' });
     } catch (error) {
@@ -96,6 +96,7 @@ export function BuilderApp() {
   const [title, setTitle] = useState('My MetaMe');
   const [background, setBackground] = useState('#F0F4F7');
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [canvasHeight, setCanvasHeight] = useState(CANVAS_HEIGHT);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageTargetId, setImageTargetId] = useState<string | null>(null);
@@ -155,17 +156,28 @@ export function BuilderApp() {
     updateBlock(imageTargetId, { content: result.imageUrl, alt: result.alt, credit: result.credit });
   };
 
-  const handleEditInCanvas = () => {
-    if (!generatedCanvas) return;
-    setTitle(generatedCanvas.title);
-    setBackground(generatedCanvas.background);
-    setBlocks(generatedCanvas.blocks);
-    setSelectedId(null);
-    setActiveTab('manual');
-    toast({
-      title: 'Loaded into Manual Canvas',
-      description: 'Exact text styling from the AI page is lost in this conversion — drag, resize, and restyle freely from here.',
-    });
+  const handleEditInCanvas = async () => {
+    if (!generatedHtml) return;
+    setIsImporting(true);
+    try {
+      const imported = await importHtmlToBlocks(generatedHtml, CANVAS_WIDTH);
+      setTitle(title || 'My MetaMe');
+      setBackground(imported.background);
+      setBlocks(imported.blocks);
+      setCanvasHeight(Math.min(Math.max(imported.heightPx, 300), 6000));
+      setSelectedId(null);
+      setActiveTab('manual');
+      logger.info('Imported AI page into manual canvas', { blockCount: imported.blocks.length });
+      toast({
+        title: 'Loaded into Manual Canvas',
+        description: `Split into ${imported.blocks.length} separately movable blocks — drag, resize, or delete any of them.`,
+      });
+    } catch (error) {
+      logger.error('Failed to import generated page into canvas', error);
+      toast({ variant: 'destructive', title: 'Import failed', description: 'Could not split the page into blocks.' });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const buildDoc = (): CanvasDoc => ({ kind: 'canvas', title, background, blocks });
@@ -262,8 +274,9 @@ export function BuilderApp() {
             />
 
             <div className="flex flex-wrap gap-2 justify-center">
-              <Button type="button" variant="outline" onClick={handleEditInCanvas}>
-                <Pencil className="mr-2 h-4 w-4" /> Edit in Canvas
+              <Button type="button" variant="outline" onClick={handleEditInCanvas} disabled={isImporting}>
+                {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
+                Edit in Canvas
               </Button>
               <Button type="button" variant="outline" onClick={handleDownloadHtml}>
                 <Download className="mr-2 h-4 w-4" /> Download HTML
@@ -314,8 +327,8 @@ export function BuilderApp() {
         <div className="flex gap-6">
           <div
             ref={canvasRef}
-            className="relative border shadow-lg mx-auto"
-            style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, background, flexShrink: 0 }}
+            className="relative border shadow-lg mx-auto overflow-hidden"
+            style={{ width: CANVAS_WIDTH, height: canvasHeight, background, flexShrink: 0 }}
             onMouseDown={(e) => {
               if (e.target === canvasRef.current) setSelectedId(null);
             }}
@@ -325,7 +338,7 @@ export function BuilderApp() {
                 key={block.id}
                 block={block}
                 canvasWidth={CANVAS_WIDTH}
-                canvasHeight={CANVAS_HEIGHT}
+                canvasHeight={canvasHeight}
                 selected={selectedId === block.id}
                 onSelect={() => setSelectedId(block.id)}
                 onChange={(patch) => updateBlock(block.id, patch)}
