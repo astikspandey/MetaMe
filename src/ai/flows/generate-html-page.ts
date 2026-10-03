@@ -3,26 +3,85 @@
 /**
  * @fileOverview Generates a standalone personal profile HTML page from a description,
  * then resolves any {img:"..."} placeholder tokens into real Pixabay/Pexels images.
+ * Also returns a lossy Block[] version of the same content, so the result can be
+ * handed off to the manual canvas editor for visual tweaking.
  */
 
 import { z } from 'zod';
 import { chatComplete } from '@/ai/client';
 import { searchTopImage } from '@/lib/image-search';
-import { extractImageTokens, buildImgTag, ensureRelativeBody } from '@/lib/image-tokens';
+import { extractImageTokens, buildImgTag, ensureRelativeBody, type ImageToken } from '@/lib/image-tokens';
+import type { Block } from '@/lib/builder-types';
 
 const GenerateHtmlPageInputSchema = z.object({
   prompt: z.string().describe('Unstructured text about the person: bio, links, achievements, etc.'),
 });
 export type GenerateHtmlPageInput = z.infer<typeof GenerateHtmlPageInputSchema>;
 
-const GenerateHtmlPageOutputSchema = z.object({
-  html: z.string(),
-});
-export type GenerateHtmlPageOutput = z.infer<typeof GenerateHtmlPageOutputSchema>;
+export interface GenerateHtmlPageOutput {
+  html: string;
+  canvas: {
+    title: string;
+    background: string;
+    blocks: Block[];
+  };
+}
 
 function extractHtmlDoc(text: string): string {
   const fenced = text.match(/```(?:html)?\s*([\s\S]*?)```/i);
   return (fenced ? fenced[1] : text).trim();
+}
+
+function extractTitle(html: string): string {
+  const match = html.match(/<title>([\s\S]*?)<\/title>/i);
+  return match ? match[1].trim() || 'My MetaMe' : 'My MetaMe';
+}
+
+function extractBackground(html: string): string {
+  const match = html.match(/body\s*{[^}]*background(?:-color)?\s*:\s*([^;]+);/i);
+  return match ? match[1].trim() : '#F0F4F7';
+}
+
+function stripHtmlToText(html: string): string {
+  let text = html.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<script[\s\S]*?<\/script>/gi, '');
+  const bodyMatch = text.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  if (bodyMatch) text = bodyMatch[1];
+  text = text.replace(/<(br|\/p|\/div|\/h[1-6]|\/li|\/tr)\s*\/?>/gi, '\n');
+  text = text.replace(/<[^>]+>/g, '');
+  text = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  text = text.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/^[ \t]+|[ \t]+$/gm, '').trim();
+  return text;
+}
+
+function newId() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function buildImageBlocks(resolved: { token: ImageToken; result: { imageUrl: string; alt: string; credit: string } | null }[]): Block[] {
+  const placed = resolved.filter((r) => r.result);
+  return placed.map(({ token, result }, i) => {
+    const hasLoc = token.x !== undefined && token.y !== undefined;
+    return {
+      id: newId(),
+      type: 'image',
+      x: hasLoc ? Math.min(Math.max((token.x as number) - 15, 0), 70) : 55 + (i % 2) * 20,
+      y: hasLoc ? Math.min(Math.max((token.y as number) - 15, 0), 70) : 10 + Math.floor(i / 2) * 30,
+      width: 30,
+      height: 30,
+      rotation: token.r ?? 0,
+      zIndex: i + 2,
+      content: result!.imageUrl,
+      alt: result!.alt,
+      credit: result!.credit,
+      borderRadius: 8,
+    };
+  });
 }
 
 const SYSTEM_PROMPT = `You write a simple, complete, standalone personal profile HTML page.
@@ -55,8 +114,10 @@ export async function generateHtmlPage(input: GenerateHtmlPageInput): Promise<Ge
   ]);
 
   let html = extractHtmlDoc(raw);
-  const tokens = extractImageTokens(html);
+  const title = extractTitle(html);
+  const background = extractBackground(html);
 
+  const tokens = extractImageTokens(html);
   const resolved = await Promise.all(
     tokens.map(async (token) => ({ token, result: await searchTopImage(token.query) }))
   );
@@ -74,5 +135,28 @@ export async function generateHtmlPage(input: GenerateHtmlPageInput): Promise<Ge
   // so a raw token can never leak onto the rendered page.
   html = html.replace(/\{img:"[^"]*"[^}]*\}/g, '');
 
-  return GenerateHtmlPageOutputSchema.parse({ html });
+  const textContent = stripHtmlToText(html);
+  const imageBlocks = buildImageBlocks(resolved);
+  const textBlock: Block = {
+    id: newId(),
+    type: 'text',
+    x: 8,
+    y: 8,
+    width: 84,
+    height: 84,
+    zIndex: 1,
+    content: textContent,
+    fontSize: 16,
+    textAlign: 'left',
+    color: '#222222',
+  };
+
+  return {
+    html,
+    canvas: {
+      title,
+      background,
+      blocks: [textBlock, ...imageBlocks],
+    },
+  };
 }

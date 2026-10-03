@@ -16,7 +16,7 @@ import type { Block, CanvasDoc } from '@/lib/builder-types';
 import { CANVAS_ASPECT_RATIO } from '@/lib/builder-types';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
-import { Type, ImagePlus, Download, LinkIcon, Loader2, Sparkles, Pencil, Eye } from 'lucide-react';
+import { Type, ImagePlus, Download, LinkIcon, Loader2, Sparkles, Pencil } from 'lucide-react';
 
 const CANVAS_WIDTH = 900;
 const CANVAS_HEIGHT = CANVAS_WIDTH / CANVAS_ASPECT_RATIO;
@@ -36,13 +36,14 @@ function encodeDoc(doc: unknown): string {
 
 export function BuilderApp() {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('ai');
 
   // --- AI generate mode ---
   const [aiPrompt, setAiPrompt] = useState('');
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
+  const [generatedCanvas, setGeneratedCanvas] = useState<CanvasDoc | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSharingAi, setIsSharingAi] = useState(false);
-  const [isEditingHtml, setIsEditingHtml] = useState(false);
 
   const handleGenerateHtml = async () => {
     if (!aiPrompt.trim()) {
@@ -51,9 +52,9 @@ export function BuilderApp() {
     }
     setIsGenerating(true);
     try {
-      const { html } = await generateHtmlPage({ prompt: aiPrompt });
+      const { html, canvas } = await generateHtmlPage({ prompt: aiPrompt });
       setGeneratedHtml(html);
-      setIsEditingHtml(false);
+      setGeneratedCanvas({ kind: 'canvas', ...canvas });
       logger.info('AI page generated', { promptLength: aiPrompt.length, htmlLength: html.length });
       toast({ title: 'Page generated!', description: 'Download it or copy a free share link below.' });
     } catch (error) {
@@ -154,6 +155,19 @@ export function BuilderApp() {
     updateBlock(imageTargetId, { content: result.imageUrl, alt: result.alt, credit: result.credit });
   };
 
+  const handleEditInCanvas = () => {
+    if (!generatedCanvas) return;
+    setTitle(generatedCanvas.title);
+    setBackground(generatedCanvas.background);
+    setBlocks(generatedCanvas.blocks);
+    setSelectedId(null);
+    setActiveTab('manual');
+    toast({
+      title: 'Loaded into Manual Canvas',
+      description: 'Exact text styling from the AI page is lost in this conversion — drag, resize, and restyle freely from here.',
+    });
+  };
+
   const buildDoc = (): CanvasDoc => ({ kind: 'canvas', title, background, blocks });
 
   const handleExportHtml = async () => {
@@ -201,7 +215,7 @@ export function BuilderApp() {
   };
 
   return (
-    <Tabs defaultValue="ai" className="w-full">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="mb-6">
         <TabsTrigger value="ai">
           <Sparkles className="mr-2 h-4 w-4" /> AI Generate
@@ -239,44 +253,18 @@ export function BuilderApp() {
 
         {!isGenerating && generatedHtml && (
           <div className="space-y-4 max-w-4xl mx-auto">
-            <div className="flex justify-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={isEditingHtml ? 'outline' : 'default'}
-                onClick={() => setIsEditingHtml(false)}
-              >
-                <Eye className="mr-2 h-4 w-4" /> Preview
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={isEditingHtml ? 'default' : 'outline'}
-                onClick={() => setIsEditingHtml(true)}
-              >
-                <Pencil className="mr-2 h-4 w-4" /> Edit Code
-              </Button>
-            </div>
-
-            {isEditingHtml ? (
-              <Textarea
-                value={generatedHtml}
-                onChange={(e) => setGeneratedHtml(e.target.value)}
-                className="w-full font-mono text-xs"
-                style={{ height: '80vh' }}
-                spellCheck={false}
-              />
-            ) : (
-              <iframe
-                srcDoc={generatedHtml}
-                sandbox=""
-                className="w-full border rounded shadow-lg bg-white"
-                style={{ height: '80vh' }}
-                title="Generated profile preview"
-              />
-            )}
+            <iframe
+              srcDoc={generatedHtml}
+              sandbox=""
+              className="w-full border rounded shadow-lg bg-white"
+              style={{ height: '80vh' }}
+              title="Generated profile preview"
+            />
 
             <div className="flex flex-wrap gap-2 justify-center">
+              <Button type="button" variant="outline" onClick={handleEditInCanvas}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit in Canvas
+              </Button>
               <Button type="button" variant="outline" onClick={handleDownloadHtml}>
                 <Download className="mr-2 h-4 w-4" /> Download HTML
               </Button>
