@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { chatComplete } from '@/ai/client';
 
 const GenerateProfileInputSchema = z.object({
-  prompt: z.string().describe('A prompt describing the desired profile.'),
+  prompt: z.string().describe('Unstructured text about the person: bio, links, achievements, etc.'),
 });
 export type GenerateProfileInput = z.infer<typeof GenerateProfileInputSchema>;
 
@@ -42,17 +42,21 @@ export async function generateProfile(input: GenerateProfileInput): Promise<Gene
   const raw = await chatComplete([
     {
       role: 'system',
-      content: `You are a profile creation expert. Based on the user's prompt, generate a complete profile.
+      content: `You turn a messy wall of text about a person — a bio, a LinkedIn/website link, career notes, interests, achievements, anything — into a short, curated personal profile. This is NOT a resume: don't produce exhaustive job-history bullet points or formal CV structure. Write it like a polished "about me" a person would proudly share, in their voice where possible.
+
+The input will rarely spell out a name or a title directly — infer them:
+- "name": pull the person's actual name from the text if present; otherwise infer a reasonable one from context (e.g. from a link/handle), never leave it generic like "N/A" or "User".
+- "headline": a short, punchy title/tagline that captures who they are (e.g. "Sustainability-focused Software Engineer"), derived from the substance of the text, not copied verbatim from it.
+
 Respond with ONLY a single JSON object, no preamble or commentary, matching exactly this shape:
 {
-  "name": string,       // a full name for the profile
-  "headline": string,   // a short headline or tagline
-  "content": string,    // the main "About Me" body, formatted as Markdown (headings, bold, lists, etc. as appropriate)
+  "name": string,       // the person's name, inferred from the text
+  "headline": string,   // a short, derived headline/tagline
+  "content": string,    // a curated "About Me" narrative, formatted as Markdown (headings, bold, lists, etc. as appropriate) — concise and editorial, not a full resume dump
   "interests": string,  // comma-separated interests
   "skills": string       // comma-separated skills
 }
-In the "content" field, insert **/n** wherever you want a line break (e.g. between paragraphs) instead of a literal newline character.
-You may invent or adjust any of these fields as needed to best match the prompt.`,
+In the "content" field, insert **/n** wherever you want a line break (e.g. between paragraphs) instead of a literal newline character.`,
     },
     { role: 'user', content: prompt },
   ]);

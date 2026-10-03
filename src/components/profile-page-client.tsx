@@ -45,7 +45,7 @@ export function ProfilePageClient() {
 
   const handleGenerateProfile = async () => {
     if (!prompt.trim()) {
-      setErrorMessage("Please enter a prompt for the AI.");
+      setErrorMessage("Tell us a bit about yourself first.");
       return;
     }
     setIsLoading(true);
@@ -64,7 +64,7 @@ export function ProfilePageClient() {
       });
     } catch (error) {
       logger.error("AI profile generation failed", error, { promptLength: prompt.length });
-      setErrorMessage("Failed to generate profile. Please try again or refine your prompt.");
+      setErrorMessage("Failed to generate profile. Please try again or add more detail.");
       toast({
         variant: "destructive",
         title: "Error Generating Profile",
@@ -212,23 +212,23 @@ export function ProfilePageClient() {
         <CardHeader>
           <CardTitle className="font-headline text-2xl flex items-center">
             <Sparkles className="mr-2 h-7 w-7 text-accent" />
-            Spark Your Profile with AI
+            Build Your MetaMe
           </CardTitle>
           <CardDescription>
-            Describe your ideal profile, and let our AI craft a starting point for you.
+            Paste anything about you — a bio, your LinkedIn, your website, career highlights, a rambling wall of text. We'll curate it into a profile, deriving your name and a headline for you.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="ai-prompt" className="text-lg font-medium">Your Prompt</Label>
+              <Label htmlFor="ai-prompt" className="text-lg font-medium">About You</Label>
               <Textarea
                 id="ai-prompt"
-                placeholder="e.g., A creative software engineer passionate about sustainable tech and hiking..."
+                placeholder="e.g., linkedin.com/in/alexjohnson - I've spent 6 years building sustainable tech products, love hiking on weekends, previously led..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[100px] mt-1 text-base"
-                rows={4}
+                className="min-h-[150px] mt-1 text-base"
+                rows={6}
               />
             </div>
             {errorMessage && (
@@ -261,10 +261,10 @@ export function ProfilePageClient() {
         <CardHeader className="non-printable-section">
           <CardTitle className="font-headline text-2xl flex items-center">
             <Edit3 className="mr-2 h-7 w-7 text-accent" />
-            Craft Your MetaMe
+            Fine-Tune Your MetaMe
           </CardTitle>
           <CardDescription>
-            Personalize your details, refine content, and add your touch.
+            We derived these from what you pasted — tweak anything before you share it.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-8">

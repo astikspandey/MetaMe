@@ -1,13 +1,24 @@
+import Link from 'next/link';
 import { Gem } from 'lucide-react';
 
 export function Header() {
   return (
     <header className="bg-primary text-primary-foreground shadow-md">
-      <div className="container mx-auto px-4 py-4 flex items-center">
-        <Gem className="h-8 w-8 mr-3" />
-        <h1 className="text-2xl font-headline font-semibold">
-          MetaMe Profile Forge
-        </h1>
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center">
+          <Gem className="h-8 w-8 mr-3" />
+          <h1 className="text-2xl font-headline font-semibold">
+            MetaMe
+          </h1>
+        </Link>
+        <nav className="flex gap-4 text-sm">
+          <Link href="/" className="hover:underline">
+            AI Profile
+          </Link>
+          <Link href="/builder" className="hover:underline">
+            Visual Builder
+          </Link>
+        </nav>
       </div>
     </header>
   );
