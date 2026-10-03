@@ -34,7 +34,17 @@ Do NOT include any <img> tags yourself — you don't know real image URLs. Inste
 - {img:"SEARCH QUERY" loc:"X(x)","Y(y)","R(r)"} to pin an image at an exact spot on the page, where X and Y are percentages (0-100) of the page's width/height, and R is a rotation in degrees (try -20 to 20 for a tasteful tilt).
 Follow this exact syntax, including the literal "(x)", "(y)", "(r)" suffixes on each number — not "%" or anything else. SEARCH QUERY must be a short, concrete, visual term (e.g. "mountain sunset", "vintage camera", "paintbrush"), never a sentence. Use 1 to 4 tokens total, placed where they'd genuinely improve the page.
 
-Base the page's background, colors, fonts, and written content (a name, a short headline, a brief bio) on the user's description below. This is a curated personal profile, not a resume — keep the copy short and warm, not an exhaustive history. Make it look like a genuinely nice, modern page.`;
+General layout guideline, for consistent results — follow this structure unless the user's description clearly calls for something else:
+1. A profile picture near the top, roughly centered (use an {img:...} token for it, e.g. a portrait-style query related to the person).
+2. Directly below the profile picture: any links the user gave you (website, LinkedIn, Instagram, GitHub, Twitter/X, etc.), as a small row of labeled text links or icons — e.g. "LinkedIn · Website · Instagram". Only include links the user actually provided; never invent a URL. If they gave a bare handle or domain, turn it into a real href (assume https:// and the obvious domain, e.g. a LinkedIn handle becomes https://linkedin.com/in/handle).
+3. Name, then a short headline/tagline.
+4. A brief bio/about section.
+5. Optional: interests, skills, or highlights, if the input supports it.
+Keep the overall page short, warm, and curated — this is a personal profile, not a resume or exhaustive history.
+
+Colors: if the user's description mentions a color, color scheme, or palette (by name, hex code, or vibe), you MUST use it as the page's actual background/accent colors — this overrides your own aesthetic judgment. If no colors are specified, pick a tasteful palette yourself.
+
+Base the page's fonts and written content (a name, a short headline, a brief bio) on the user's description below. Make it look like a genuinely nice, modern page.`;
 
 export async function generateHtmlPage(input: GenerateHtmlPageInput): Promise<GenerateHtmlPageOutput> {
   const { prompt } = GenerateHtmlPageInputSchema.parse(input);

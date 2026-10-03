@@ -16,7 +16,7 @@ import type { Block, CanvasDoc } from '@/lib/builder-types';
 import { CANVAS_ASPECT_RATIO } from '@/lib/builder-types';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
-import { Type, ImagePlus, Download, LinkIcon, Loader2, Sparkles } from 'lucide-react';
+import { Type, ImagePlus, Download, LinkIcon, Loader2, Sparkles, Pencil, Eye } from 'lucide-react';
 
 const CANVAS_WIDTH = 900;
 const CANVAS_HEIGHT = CANVAS_WIDTH / CANVAS_ASPECT_RATIO;
@@ -42,6 +42,7 @@ export function BuilderApp() {
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSharingAi, setIsSharingAi] = useState(false);
+  const [isEditingHtml, setIsEditingHtml] = useState(false);
 
   const handleGenerateHtml = async () => {
     if (!aiPrompt.trim()) {
@@ -52,6 +53,7 @@ export function BuilderApp() {
     try {
       const { html } = await generateHtmlPage({ prompt: aiPrompt });
       setGeneratedHtml(html);
+      setIsEditingHtml(false);
       logger.info('AI page generated', { promptLength: aiPrompt.length, htmlLength: html.length });
       toast({ title: 'Page generated!', description: 'Download it or copy a free share link below.' });
     } catch (error) {
@@ -237,13 +239,43 @@ export function BuilderApp() {
 
         {!isGenerating && generatedHtml && (
           <div className="space-y-4 max-w-4xl mx-auto">
-            <iframe
-              srcDoc={generatedHtml}
-              sandbox=""
-              className="w-full border rounded shadow-lg bg-white"
-              style={{ height: '80vh' }}
-              title="Generated profile preview"
-            />
+            <div className="flex justify-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={isEditingHtml ? 'outline' : 'default'}
+                onClick={() => setIsEditingHtml(false)}
+              >
+                <Eye className="mr-2 h-4 w-4" /> Preview
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={isEditingHtml ? 'default' : 'outline'}
+                onClick={() => setIsEditingHtml(true)}
+              >
+                <Pencil className="mr-2 h-4 w-4" /> Edit Code
+              </Button>
+            </div>
+
+            {isEditingHtml ? (
+              <Textarea
+                value={generatedHtml}
+                onChange={(e) => setGeneratedHtml(e.target.value)}
+                className="w-full font-mono text-xs"
+                style={{ height: '80vh' }}
+                spellCheck={false}
+              />
+            ) : (
+              <iframe
+                srcDoc={generatedHtml}
+                sandbox=""
+                className="w-full border rounded shadow-lg bg-white"
+                style={{ height: '80vh' }}
+                title="Generated profile preview"
+              />
+            )}
+
             <div className="flex flex-wrap gap-2 justify-center">
               <Button type="button" variant="outline" onClick={handleDownloadHtml}>
                 <Download className="mr-2 h-4 w-4" /> Download HTML
