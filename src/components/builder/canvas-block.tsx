@@ -52,7 +52,7 @@ export function CanvasBlock({
         });
       }}
       onMouseDown={onSelect}
-      style={{ zIndex: block.zIndex }}
+      style={{ zIndex: block.zIndex, transform: block.rotation ? `rotate(${block.rotation}deg)` : undefined }}
       className={cn('group border-2 border-transparent', selected && 'border-primary')}
     >
       {selected && (

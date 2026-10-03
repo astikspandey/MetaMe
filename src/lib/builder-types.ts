@@ -18,6 +18,8 @@ export interface Block {
   alt?: string;
   credit?: string;
   borderRadius?: number;
+  /** Rotation in degrees. */
+  rotation?: number;
 }
 
 export interface CanvasDoc {

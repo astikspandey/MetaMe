@@ -1,20 +1,21 @@
 "use client";
 
 import { useRef, useState } from 'react';
-import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CanvasBlock } from '@/components/builder/canvas-block';
 import { ImageSearchDialog } from '@/components/builder/image-search-dialog';
-import type { ImageSearchResult } from '@/app/api/images/search/route';
+import type { ImageSearchResult } from '@/lib/image-search';
 import { generatePageHtml } from '@/ai/flows/generate-page-html';
+import { generateHtmlPage } from '@/ai/flows/generate-html-page';
 import type { Block, CanvasDoc } from '@/lib/builder-types';
 import { CANVAS_ASPECT_RATIO } from '@/lib/builder-types';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
-import { Type, ImagePlus, Download, LinkIcon, Loader2 } from 'lucide-react';
+import { Type, ImagePlus, Download, LinkIcon, Loader2, Sparkles } from 'lucide-react';
 
 const CANVAS_WIDTH = 900;
 const CANVAS_HEIGHT = CANVAS_WIDTH / CANVAS_ASPECT_RATIO;
@@ -23,7 +24,7 @@ function newId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function encodeCanvasDoc(doc: CanvasDoc): string {
+function encodeDoc(doc: unknown): string {
   const bytes = new TextEncoder().encode(JSON.stringify(doc));
   let binary = '';
   bytes.forEach((b) => {
@@ -32,7 +33,62 @@ function encodeCanvasDoc(doc: CanvasDoc): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export default function BuilderPage() {
+export function BuilderApp() {
+  const { toast } = useToast();
+
+  // --- AI generate mode ---
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharingAi, setIsSharingAi] = useState(false);
+
+  const handleGenerateHtml = async () => {
+    if (!aiPrompt.trim()) {
+      toast({ variant: 'destructive', title: 'Tell us about yourself first.' });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const { html } = await generateHtmlPage({ prompt: aiPrompt });
+      setGeneratedHtml(html);
+      logger.info('AI page generated', { promptLength: aiPrompt.length, htmlLength: html.length });
+      toast({ title: 'Page generated!', description: 'Download it or copy a free share link below.' });
+    } catch (error) {
+      logger.error('AI page generation failed', error, { promptLength: aiPrompt.length });
+      toast({ variant: 'destructive', title: 'Generation failed', description: 'Please try again.' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadHtml = () => {
+    if (!generatedHtml) return;
+    const blob = new Blob([generatedHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'metame-profile.html';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShareHtml = async () => {
+    if (!generatedHtml) return;
+    setIsSharingAi(true);
+    try {
+      const encoded = encodeDoc({ kind: 'html', html: generatedHtml });
+      const shareUrl = `${window.location.origin}/?doc=${encoded}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast({ title: 'Share link copied!', description: 'Anyone with this free link can view your profile.' });
+    } catch (error) {
+      logger.error('Failed to copy AI page share link', error);
+      toast({ variant: 'destructive', title: 'Failed to copy link' });
+    } finally {
+      setIsSharingAi(false);
+    }
+  };
+
+  // --- Manual canvas mode ---
   const [title, setTitle] = useState('My MetaMe');
   const [background, setBackground] = useState('#F0F4F7');
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -42,7 +98,6 @@ export default function BuilderPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   const selectedBlock = blocks.find((b) => b.id === selectedId) || null;
 
@@ -130,7 +185,7 @@ export default function BuilderPage() {
     }
     setIsSharing(true);
     try {
-      const encoded = encodeCanvasDoc(buildDoc());
+      const encoded = encodeDoc(buildDoc());
       const shareUrl = `${window.location.origin}/?doc=${encoded}`;
       await navigator.clipboard.writeText(shareUrl);
       toast({ title: 'Share link copied!', description: 'Anyone with this free link can view your profile.' });
@@ -143,9 +198,54 @@ export default function BuilderPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <Header />
-      <main className="flex-grow container mx-auto px-4 py-8 max-w-7xl">
+    <Tabs defaultValue="ai" className="w-full">
+      <TabsList className="mb-6">
+        <TabsTrigger value="ai">
+          <Sparkles className="mr-2 h-4 w-4" /> AI Generate
+        </TabsTrigger>
+        <TabsTrigger value="manual">Manual Canvas</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="ai" className="space-y-6">
+        <div className="space-y-2 max-w-2xl mx-auto">
+          <Label htmlFor="ai-page-prompt" className="text-lg font-medium">About You</Label>
+          <Textarea
+            id="ai-page-prompt"
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder="Paste your bio, LinkedIn, website, whatever — the AI will write a simple page and drop in photos from Pixabay/Pexels wherever it sees fit."
+            className="min-h-[150px] text-base"
+            rows={6}
+          />
+          <Button type="button" onClick={handleGenerateHtml} disabled={isGenerating} size="lg">
+            {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+            Generate Page
+          </Button>
+        </div>
+
+        {generatedHtml && (
+          <div className="space-y-4 max-w-4xl mx-auto">
+            <iframe
+              srcDoc={generatedHtml}
+              sandbox=""
+              className="w-full border rounded shadow-lg bg-white"
+              style={{ height: '80vh' }}
+              title="Generated profile preview"
+            />
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button type="button" variant="outline" onClick={handleDownloadHtml}>
+                <Download className="mr-2 h-4 w-4" /> Download HTML
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleShareHtml} disabled={isSharingAi}>
+                {isSharingAi ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+                Copy Free Share Link
+              </Button>
+            </div>
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="manual">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div>
             <Label htmlFor="page-title" className="text-sm">Page Title</Label>
@@ -247,6 +347,14 @@ export default function BuilderPage() {
                     onChange={(e) => updateBlock(selectedBlock.id, { height: Number(e.target.value) })}
                   />
                 </div>
+                <div>
+                  <Label className="text-xs">Rotation °</Label>
+                  <Input
+                    type="number"
+                    value={Math.round(selectedBlock.rotation ?? 0)}
+                    onChange={(e) => updateBlock(selectedBlock.id, { rotation: Number(e.target.value) })}
+                  />
+                </div>
               </div>
 
               {selectedBlock.type === 'text' && (
@@ -301,10 +409,9 @@ export default function BuilderPage() {
         <p className="text-xs text-muted-foreground mt-4 text-center">
           Drag blocks to move them, drag a corner to resize. Double-click an image block to change its picture.
         </p>
-      </main>
-      <Footer />
+      </TabsContent>
 
       <ImageSearchDialog open={imageDialogOpen} onOpenChange={setImageDialogOpen} onSelect={handleImageSelected} />
-    </div>
+    </Tabs>
   );
 }

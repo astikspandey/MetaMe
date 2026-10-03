@@ -1,0 +1,64 @@
+'use server';
+
+/**
+ * @fileOverview Generates a standalone personal profile HTML page from a description,
+ * then resolves any {img:"..."} placeholder tokens into real Pixabay/Pexels images.
+ */
+
+import { z } from 'zod';
+import { chatComplete } from '@/ai/client';
+import { searchTopImage } from '@/lib/image-search';
+import { extractImageTokens, buildImgTag, ensureRelativeBody } from '@/lib/image-tokens';
+
+const GenerateHtmlPageInputSchema = z.object({
+  prompt: z.string().describe('Unstructured text about the person: bio, links, achievements, etc.'),
+});
+export type GenerateHtmlPageInput = z.infer<typeof GenerateHtmlPageInputSchema>;
+
+const GenerateHtmlPageOutputSchema = z.object({
+  html: z.string(),
+});
+export type GenerateHtmlPageOutput = z.infer<typeof GenerateHtmlPageOutputSchema>;
+
+function extractHtmlDoc(text: string): string {
+  const fenced = text.match(/```(?:html)?\s*([\s\S]*?)```/i);
+  return (fenced ? fenced[1] : text).trim();
+}
+
+const SYSTEM_PROMPT = `You write a simple, complete, standalone personal profile HTML page.
+
+Output ONLY the HTML: a full document, <!doctype html><html>...<head> with a <title> and inline <style>...</head><body>...</body></html>. No external stylesheets or scripts, except an optional Google Fonts <link> tag for nicer typography. No commentary, no markdown code fences.
+
+Do NOT include any <img> tags yourself — you don't know real image URLs. Instead, wherever a photo or illustration would make the page nicer, insert a plain-text placeholder token right at that spot in the HTML:
+- {img:"SEARCH QUERY"} to drop an image inline in the normal flow of the content, or
+- {img:"SEARCH QUERY" loc:"X(x)","Y(y)","R(r)"} to pin an image at an exact spot on the page, where X and Y are percentages (0-100) of the page's width/height, and R is a rotation in degrees (try -20 to 20 for a tasteful tilt).
+SEARCH QUERY must be a short, concrete, visual term (e.g. "mountain sunset", "vintage camera", "paintbrush"), never a sentence. Use 1 to 4 tokens total, placed where they'd genuinely improve the page.
+
+Base the page's background, colors, fonts, and written content (a name, a short headline, a brief bio) on the user's description below. This is a curated personal profile, not a resume — keep the copy short and warm, not an exhaustive history. Make it look like a genuinely nice, modern page.`;
+
+export async function generateHtmlPage(input: GenerateHtmlPageInput): Promise<GenerateHtmlPageOutput> {
+  const { prompt } = GenerateHtmlPageInputSchema.parse(input);
+
+  const raw = await chatComplete([
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: prompt },
+  ]);
+
+  let html = extractHtmlDoc(raw);
+  const tokens = extractImageTokens(html);
+
+  const resolved = await Promise.all(
+    tokens.map(async (token) => ({ token, result: await searchTopImage(token.query) }))
+  );
+
+  for (const { token, result } of resolved) {
+    const replacement = result ? buildImgTag(token, result.imageUrl, result.alt, result.credit) : '';
+    html = html.split(token.raw).join(replacement);
+  }
+
+  if (tokens.some((t) => t.x !== undefined)) {
+    html = ensureRelativeBody(html);
+  }
+
+  return GenerateHtmlPageOutputSchema.parse({ html });
+}

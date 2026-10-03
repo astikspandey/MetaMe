@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Search } from 'lucide-react';
-import type { ImageSearchResult } from '@/app/api/images/search/route';
+import type { ImageSearchResult } from '@/lib/image-search';
 import { logger } from '@/lib/logger';
 
 interface ImageSearchDialogProps {

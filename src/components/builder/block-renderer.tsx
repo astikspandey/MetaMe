@@ -13,6 +13,7 @@ export function BlockRenderer({ block }: BlockRendererProps) {
     width: `${block.width}%`,
     height: `${block.height}%`,
     zIndex: block.zIndex,
+    transform: block.rotation ? `rotate(${block.rotation}deg)` : undefined,
   };
 
   if (block.type === 'image') {
