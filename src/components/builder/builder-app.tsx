@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CanvasBlock } from '@/components/builder/canvas-block';
 import { ImageSearchDialog } from '@/components/builder/image-search-dialog';
+import { SparkleLoader } from '@/components/ui/sparkle-loader';
 import type { ImageSearchResult } from '@/lib/image-search';
 import { generatePageHtml } from '@/ai/flows/generate-page-html';
 import { generateHtmlPage } from '@/ai/flows/generate-html-page';
@@ -218,12 +219,23 @@ export function BuilderApp() {
             rows={6}
           />
           <Button type="button" onClick={handleGenerateHtml} disabled={isGenerating} size="lg">
-            {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+            {isGenerating ? (
+              <SparkleLoader size={20} className="mr-2" />
+            ) : (
+              <Sparkles className="mr-2 h-5 w-5" />
+            )}
             Generate Page
           </Button>
         </div>
 
-        {generatedHtml && (
+        {isGenerating && (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <SparkleLoader size={72} />
+            <p className="text-sm text-muted-foreground">Writing your page and finding photos...</p>
+          </div>
+        )}
+
+        {!isGenerating && generatedHtml && (
           <div className="space-y-4 max-w-4xl mx-auto">
             <iframe
               srcDoc={generatedHtml}

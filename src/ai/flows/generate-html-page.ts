@@ -32,7 +32,7 @@ Output ONLY the HTML: a full document, <!doctype html><html>...<head> with a <ti
 Do NOT include any <img> tags yourself — you don't know real image URLs. Instead, wherever a photo or illustration would make the page nicer, insert a plain-text placeholder token right at that spot in the HTML:
 - {img:"SEARCH QUERY"} to drop an image inline in the normal flow of the content, or
 - {img:"SEARCH QUERY" loc:"X(x)","Y(y)","R(r)"} to pin an image at an exact spot on the page, where X and Y are percentages (0-100) of the page's width/height, and R is a rotation in degrees (try -20 to 20 for a tasteful tilt).
-SEARCH QUERY must be a short, concrete, visual term (e.g. "mountain sunset", "vintage camera", "paintbrush"), never a sentence. Use 1 to 4 tokens total, placed where they'd genuinely improve the page.
+Follow this exact syntax, including the literal "(x)", "(y)", "(r)" suffixes on each number — not "%" or anything else. SEARCH QUERY must be a short, concrete, visual term (e.g. "mountain sunset", "vintage camera", "paintbrush"), never a sentence. Use 1 to 4 tokens total, placed where they'd genuinely improve the page.
 
 Base the page's background, colors, fonts, and written content (a name, a short headline, a brief bio) on the user's description below. This is a curated personal profile, not a resume — keep the copy short and warm, not an exhaustive history. Make it look like a genuinely nice, modern page.`;
 
@@ -59,6 +59,10 @@ export async function generateHtmlPage(input: GenerateHtmlPageInput): Promise<Ge
   if (tokens.some((t) => t.x !== undefined)) {
     html = ensureRelativeBody(html);
   }
+
+  // Safety net: strip any leftover/malformed {img:"..."} tokens the regex above didn't catch,
+  // so a raw token can never leak onto the rendered page.
+  html = html.replace(/\{img:"[^"]*"[^}]*\}/g, '');
 
   return GenerateHtmlPageOutputSchema.parse({ html });
 }

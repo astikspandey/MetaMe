@@ -7,7 +7,13 @@ export interface ImageToken {
 }
 
 // {img:"query"} or {img:"query" loc:"97(x)","100(y)","30(r)"}
-const IMG_TOKEN_RE = /\{img:"([^"]+)"(?:\s*loc:"(-?[\d.]+)\(x\)"\s*,\s*"(-?[\d.]+)\(y\)"\s*,\s*"(-?[\d.]+)\(r\)")?\}/g;
+// Lenient: models drift on the exact suffix ("97(x)", "97%", or bare "97"),
+// so each number's unit suffix is optional and ignored either way.
+const NUM = '(-?[\\d.]+)(?:%|°|deg|\\(x\\)|\\(y\\)|\\(r\\))?';
+const IMG_TOKEN_RE = new RegExp(
+  `\\{img:"([^"]+)"(?:\\s*loc:"${NUM}"\\s*,\\s*"${NUM}"\\s*,\\s*"${NUM}")?\\}`,
+  'g'
+);
 
 export function extractImageTokens(text: string): ImageToken[] {
   const tokens: ImageToken[] = [];
