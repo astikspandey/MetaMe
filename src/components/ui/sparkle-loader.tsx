@@ -4,7 +4,6 @@ import { Sparkle } from 'lucide-react';
 import type { CSSProperties } from 'react';
 
 const DOT_COUNT = 8;
-const CYCLE_SECONDS = 1.6;
 
 interface SparkleLoaderProps {
   size?: number;
@@ -23,13 +22,11 @@ export function SparkleLoader({ size = 56, className }: SparkleLoaderProps) {
       />
       {dots.map((_, i) => {
         const angle = (360 / DOT_COUNT) * i;
-        const delay = -(i / DOT_COUNT) * CYCLE_SECONDS;
         const style: CSSProperties & { '--angle'?: string; '--radius'?: string } = {
           width: size * 0.16,
           height: size * 0.16,
           ['--angle' as any]: `${angle}deg`,
           ['--radius' as any]: `${size * 0.42}px`,
-          animationDelay: `${delay}s`,
         };
         return (
           <Sparkle
